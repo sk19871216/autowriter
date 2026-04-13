@@ -27,33 +27,38 @@
 
 ## 阶段二：分层记忆
 
-- [ ] 任务 2.1: 实现 L1 索引层 (memory_index.md)
-  - 创建索引文件读写类
-  - 实现索引条目格式解析（char/world/plot 前缀）
-  - 实现索引更新方法（添加、删除、搜索）
-  - 实现 150 字符指针原则验证
+- [x] 任务 2.1: 实现 L1 索引层 (memory_index.md) ✅
+  - ✅ 创建索引文件读写类 (IndexLayer)
+  - ✅ 实现索引条目格式解析（char/world/plot 前缀）
+  - ✅ 实现索引更新方法（添加、删除、搜索）
+  - ✅ 实现 150 字符指针原则验证
 
-- [ ] 任务 2.2: 实现 L2 详情层 (memories/*.md)
-  - 创建详情文件管理器
-  - 实现 `characters.md` 结构化管理
-  - 实现 `worldview.md` 结构化管理
-  - 实现 `timeline.md` 结构化管理
-  - 实现 `foreshadowing.md` 结构化管理
+- [x] 任务 2.2: 实现 L2 详情层 (memories/*.md) ✅
+  - ✅ 创建详情文件管理器 (DetailLayer)
+  - ✅ 实现 characters.md 结构化管理
+  - ✅ 实现 worldview.md 结构化管理
+  - ✅ 实现 timeline.md 结构化管理
+  - ✅ 实现 foreshadowing.md 结构化管理
 
-- [ ] 任务 2.3: 实现 L3 状态层 (state.json)
-  - 设计状态数据结构（进度、伏笔、激活实体等）
-  - 实现 JSON 序列化/反序列化
-  - 实现状态读写和更新方法
+- [x] 任务 2.3: 实现 L3 状态层 (state.json) ✅
+  - ✅ 设计状态数据结构（timeline, character_status, pending_foreshadowing）
+  - ✅ 实现 JSON 序列化/反序列化
+  - ✅ 实现状态读写和更新方法
 
-- [ ] 任务 2.4: 实现检索与注入机制
-  - 实现基于实体提取的检索流程
-  - 实现上下文资料包打包
-  - 实现按需注入逻辑
+- [x] 任务 2.4: 实现检索与注入机制 ✅
+  - ✅ 实现基于实体提取的检索流程 (MemoryRetriever)
+  - ✅ 实现上下文资料包打包（≤500字）
+  - ✅ 实现按需注入逻辑
 
-- [ ] 任务 2.5: 实现 Auto Dream 记忆整合
-  - 实现伏笔回收检测
-  - 实现新增关系归纳
-  - 实现记忆文件自动更新
+- [x] 任务 2.5: 实现 Auto Dream 记忆整合 ✅
+  - ✅ 实现伏笔回收检测
+  - ✅ 实现新增关系归纳
+  - ✅ 实现记忆文件自动更新
+
+- [x] 任务 2.6: 集成到工具层 ✅
+  - ✅ query_memory 工具使用 MemoryRetriever
+  - ✅ write_draft 工具写作前注入 L1 索引
+  - ✅ write_draft 工具写作后触发 Auto Dream 整合
 
 ---
 

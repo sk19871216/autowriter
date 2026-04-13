@@ -17,6 +17,7 @@ from autowriter.src.llm.client import LLMClient
 from autowriter.src.llm.message import ToolDefinition
 from autowriter.src.core.react import ReActLoop, ToolRegistry, AgentState
 from autowriter.src.core.state import SessionState
+from autowriter.src.memory import MemoryRetriever, MemoryIntegrator
 
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,9 @@ class WritingAgent:
         self.tool_registry = ToolRegistry()
         self.llm_client = LLMClient()
         self._setup_tools()
+
+        self.memory_retriever = MemoryRetriever(str(self.project_path))
+        self.memory_integrator = MemoryIntegrator(str(self.project_path))
 
         self.react_loop = ReActLoop(
             llm_client=self.llm_client,
@@ -178,15 +182,20 @@ class WritingAgent:
 
     def _tool_query_memory(self, query: str) -> str:
         """工具：查询记忆"""
-        return f"[记忆查询结果]: {query}\n详细记忆内容请从 memory_index.md 和 memories/ 目录中检索。"
+        return self.memory_retriever.retrieve(query)
 
     def _tool_write_draft(self, chapter: int, outline: str) -> str:
         """工具：写章节草稿（调用 LLM 生成）"""
         style_rules = self._load_style_rules() or "古龙式冷峻风格，短句为主，环境渲染意境"
 
+        full_index = self.memory_retriever.get_full_index()
+
         prompt = f"""你是专业的小说作家。
 
-请根据以下素材创作小说章节开头：
+【记忆索引】
+{full_index}
+
+请根据以下素材创作小说章节：
 
 {outline}
 
@@ -194,14 +203,16 @@ class WritingAgent:
 1. 描写生动细腻，营造氛围
 2. 符合古龙式冷峻风格
 3. 注重人物刻画和心理描写
-4. 短句为主，环境渲染意境
+4. 保持角色性格一致
 5. 直接输出小说内容，不需要任何说明
 
 小说内容："""
 
         try:
             if not self.llm_client.config.api_key:
-                return f"[API Key 未配置] 正在使用模拟输出。\n\n雨滴落在破庙的残瓦上，发出清脆的声响。\n\n林清瑶站在庙门前，剑鞘轻叩腰间，发出细微的金属碰撞声。她的衣衫已经湿透，雨水顺着发丝滑落，但她的眼神依然如剑锋般锐利。\n\n'十年了。'她在心中默念，'我终于找到了这里。'\n\n..."
+                draft = f"[API Key 未配置] 正在使用模拟输出。\n\n雨滴落在破庙的残瓦上，发出清脆的声响。\n\n林清瑶站在庙门前，剑鞘轻叩腰间，发出细微的金属碰撞声。她的衣衫已经湿透，雨水顺着发丝滑落，但她的眼神依然如剑锋般锐利。\n\n'十年了。'她在心中默念，'我终于找到了这里。'\n\n..."
+                self._update_memory_after_write(draft)
+                return draft
 
             response = self.llm_client.call(prompt, temperature=0.8, max_tokens=2000)
             content = response.content
@@ -209,11 +220,21 @@ class WritingAgent:
             if not content:
                 return "[LLM 返回空内容]"
 
+            self._update_memory_after_write(content)
             return content
 
         except Exception as e:
             logger.error(f"写作失败: {e}")
             return f"[写作失败: {str(e)}]\n\n请检查 API 配置和网络连接。"
+
+    def _update_memory_after_write(self, draft_content: str) -> None:
+        """章节写作后自动更新记忆（Auto Dream）"""
+        try:
+            stats = self.memory_integrator.extract_and_update_memory(draft_content)
+            if stats["new_characters"] > 0 or stats["new_locations"] > 0 or stats["new_foreshadowing"] > 0:
+                logger.info(f"记忆更新完成: 新增角色{stats['new_characters']}个, 新增地点{stats['new_locations']}个, 新增伏笔{stats['new_foreshadowing']}个, 回收伏笔{stats['resolved_foreshadowing']}个")
+        except Exception as e:
+            logger.warning(f"记忆更新失败: {e}")
 
     def _tool_revise_draft(self, chapter: int, instruction: str) -> str:
         """工具：修订章节"""

@@ -7,10 +7,16 @@
 """
 
 import os
-from typing import Optional
+from typing import Optional, Dict, Any
 import anthropic
 
 from autowriter.config.settings import DEFAULT_CONFIG
+
+
+class LLMConfig:
+    """LLM 配置"""
+    def __init__(self, api_key: str = None):
+        self.api_key = api_key or os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("MINIMAX_START", "")
 
 
 class LLMClient:
@@ -21,6 +27,7 @@ class LLMClient:
         self._messages = []
         self._tools = []
         self._system_message = ""
+        self.config = LLMConfig()
 
     def _get_client(self) -> anthropic.Anthropic:
         """获取 Anthropic 客户端"""
@@ -79,6 +86,31 @@ class LLMClient:
             user_message=user_message,
             max_tokens=max_tokens
         )
+
+    def call(
+        self,
+        prompt: str,
+        system: str = None,
+        temperature: float = 0.7,
+        max_tokens: int = 4000
+    ) -> Any:
+        """发送消息并获取响应的便捷方法
+
+        Args:
+            prompt: 用户消息
+            system: 系统消息
+            temperature: 温度参数
+            max_tokens: 最大 token 数
+
+        Returns:
+            消息对象
+        """
+        response = self.create_message(
+            system=system or self._system_message,
+            user_message=prompt,
+            max_tokens=max_tokens
+        )
+        return response
 
     def parse_response(self, message) -> dict:
         """解析响应（按照官方文档）"""

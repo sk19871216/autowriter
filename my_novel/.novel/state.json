@@ -8,7 +8,9 @@
     "current_chapter": 1,
     "total_chapters": 30,
     "completed_chapters": 0,
-    "drafting_chapters": [1]
+    "drafting_chapters": [
+      1
+    ]
   },
   "writing_config": {
     "style": "古龙式冷峻",
@@ -19,8 +21,15 @@
     ]
   },
   "active_entities": {
-    "characters": ["林清瑶", "李慕白", "青云子"],
-    "locations": ["青云宗", "藏剑阁"]
+    "characters": [
+      "林清瑶",
+      "李慕白",
+      "青云子"
+    ],
+    "locations": [
+      "青云宗",
+      "藏剑阁"
+    ]
   },
   "foreshadowing": {
     "unresolved": [
@@ -54,5 +63,55 @@
     }
   ],
   "revision_queue": [],
-  "validation_history": []
+  "validation_history": [],
+  "story_state": {
+    "timeline": {
+      "current_date": "初始",
+      "events": []
+    },
+    "character_status": {
+      "青云子（提及）": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "林清瑶母亲（提及）": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "李慕白母亲（提及）": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      }
+    },
+    "pending_foreshadowing": [
+      {
+        "id": "林清瑶母亲与李慕白母亲死于同一人之手（均身中三十七处剑伤），凶手疑似青云子",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "李慕白母亲与青云宗之间存在隐秘往事",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "林清瑶父亲花费十八年追查凶手，青云子是最后一人",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "明日卯时青云山后山，林清瑶将刺杀青云子，李慕白决定相助",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "李慕白对林清瑶产生兴趣（「有意思」暗示后续发展）",
+        "status": "unresolved",
+        "hint": ""
+      }
+    ]
+  }
 }
