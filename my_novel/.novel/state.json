@@ -1,0 +1,58 @@
+{
+  "project_info": {
+    "name": "我的小说",
+    "created_at": "2026-04-13T00:00:00",
+    "updated_at": "2026-04-13T00:00:00"
+  },
+  "writing_progress": {
+    "current_chapter": 1,
+    "total_chapters": 30,
+    "completed_chapters": 0,
+    "drafting_chapters": [1]
+  },
+  "writing_config": {
+    "style": "古龙式冷峻",
+    "tone": "悬疑",
+    "iron_rules": [
+      "林清瑶的剑鞘始终未出",
+      "青云子的每句话都要暗藏机锋"
+    ]
+  },
+  "active_entities": {
+    "characters": ["林清瑶", "李慕白", "青云子"],
+    "locations": ["青云宗", "藏剑阁"]
+  },
+  "foreshadowing": {
+    "unresolved": [
+      {
+        "id": "灭门案",
+        "introduced_in_chapter": 1,
+        "description": "林清瑶家族被灭，凶手不明",
+        "status": "unresolved"
+      },
+      {
+        "id": "血仇真相",
+        "introduced_in_chapter": 1,
+        "description": "与林清瑶身世相关",
+        "status": "unresolved"
+      }
+    ],
+    "resolved": []
+  },
+  "timeline": [
+    {
+      "id": "十年前",
+      "chapter": null,
+      "description": "灭门惨案发生",
+      "importance": "high"
+    },
+    {
+      "id": "当前",
+      "chapter": 1,
+      "description": "林清瑶拜入青云宗",
+      "importance": "high"
+    }
+  ],
+  "revision_queue": [],
+  "validation_history": []
+}
