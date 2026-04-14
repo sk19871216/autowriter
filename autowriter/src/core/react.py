@@ -100,23 +100,22 @@ class ReActLoop:
         user_message = self._build_thinking_prompt(context)
         raw_response = self.llm_client.call_with_tools(user_message)
         response = self.llm_client.parse_response(raw_response)
+        self.llm_client.add_llm_response(raw_response)
 
         text = response.get("content") or ""
         has_tools = response.get("has_tool_calls", False)
 
         if has_tools and response.get("tool_calls"):
-            tool_call = response["tool_calls"][0]
-            tool_name = tool_call["name"]
-            tool_args = tool_call["input"]
-            tool_use_id = tool_call["id"]
+            tool_calls = response["tool_calls"]
+            first_tool = tool_calls[0]
 
             context.history.append({
                 "state": "THINKING",
                 "thought": text,
-                "action": {"tool": tool_name, "args": tool_args}
+                "action": {"tool": first_tool["name"], "args": first_tool["input"]}
             })
             context.current_state = AgentState.ACTION
-            context._pending_action = (tool_name, tool_args, tool_use_id)
+            context._pending_tool_calls = tool_calls
 
         elif response.get("stop_reason") == "end_turn" or (text and "FINISH" in text.upper()):
             context.current_state = AgentState.FINISH
@@ -133,47 +132,44 @@ class ReActLoop:
 
     def _handle_action(self, context: ReActContext) -> None:
         """处理行动状态"""
-        action = getattr(context, "_pending_action", None)
-        if not action:
+        pending_calls = getattr(context, "_pending_tool_calls", [])
+        if not pending_calls:
             context.current_state = AgentState.ERROR
             return
 
-        tool_name = action[0]
-        tool_args = action[1]
-        tool_use_id = action[2] if len(action) > 2 else None
+        all_results = []
+        for tool_call in pending_calls:
+            tool_name = tool_call["name"]
+            tool_args = tool_call["input"]
+            tool_use_id = tool_call["id"]
 
-        tool_func = self.tool_registry.get(tool_name)
+            tool_func = self.tool_registry.get(tool_name)
 
-        if not tool_func:
-            result = ActionResult(
-                success=False,
-                content=None,
-                error=f"未知工具: {tool_name}"
-            )
-        else:
-            try:
-                args = tool_args if isinstance(tool_args, dict) else json.loads(tool_args)
-                tool_output = tool_func(**args)
-                result = ActionResult(success=True, content=tool_output)
-            except Exception as e:
-                result = ActionResult(success=False, content=None, error=str(e))
+            if not tool_func:
+                result_content = json.dumps({"error": f"未知工具: {tool_name}"})
+            else:
+                try:
+                    args = tool_args if isinstance(tool_args, dict) else json.loads(tool_args)
+                    tool_output = tool_func(**args)
+                    result_content = json.dumps(tool_output) if tool_output else "null"
+                except Exception as e:
+                    result_content = json.dumps({"error": str(e)})
 
-        effective_tool_id = tool_use_id or f"tool_{len(context.history)}"
-        
-        tool_result_content = json.dumps(result.content if result.success else {"error": result.error})
-        self.llm_client.add_tool_result(effective_tool_id, tool_result_content)
+            self.llm_client.add_tool_result(tool_use_id, result_content)
+            all_results.append(result_content)
 
         context.history.append({
             "state": "ACTION",
-            "tool": tool_name,
-            "args": tool_args,
-            "result": result.content if result.success else None,
-            "error": result.error if not result.success else None
+            "tool": pending_calls[0]["name"],
+            "args": pending_calls[0]["input"],
+            "result": all_results[0] if all_results else None
         })
 
-        context.observations.append(
-            result.content if result.success else f"Error: {result.error}"
-        )
+        combined_result = "\n".join([
+            f"工具 {tc['name']} 的结果: {r}" 
+            for tc, r in zip(pending_calls, all_results)
+        ])
+        context.observations.append(combined_result)
         context.current_state = AgentState.OBSERVING
 
     def _handle_observing(self, context: ReActContext) -> None:

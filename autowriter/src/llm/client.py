@@ -7,7 +7,9 @@
 """
 
 import os
-from typing import Optional, Dict, Any
+import re
+import json
+from typing import Optional, Dict, Any, List
 import anthropic
 
 from autowriter.config.settings import DEFAULT_CONFIG
@@ -28,6 +30,7 @@ class LLMClient:
         self._tools = []
         self._system_message = ""
         self.config = LLMConfig()
+        self._tool_call_counter = 0
 
     def _get_client(self) -> anthropic.Anthropic:
         """获取 Anthropic 客户端"""
@@ -39,32 +42,105 @@ class LLMClient:
             )
         return self._client
 
+    def add_tool_result(self, tool_use_id: str, content: str) -> None:
+        """添加工具结果消息"""
+        self._messages.append({
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": tool_use_id,
+                    "content": content
+                }
+            ]
+        })
+
+    def add_llm_response(self, message) -> None:
+        """保存 LLM 的回复到消息历史"""
+        assistant_content = []
+        has_tool_use = False
+        text_content = ""
+
+        for block in message.content:
+            if block.type == "text":
+                text_content += block.text
+                assistant_content.append({"type": "text", "text": block.text})
+            elif block.type == "tool_use":
+                has_tool_use = True
+                assistant_content.append({
+                    "type": "tool_use",
+                    "id": block.id,
+                    "name": block.name,
+                    "input": block.input
+                })
+
+        if has_tool_use and assistant_content:
+            self._messages.append({
+                "role": "assistant",
+                "content": assistant_content
+            })
+        elif text_content:
+            self._messages.append({
+                "role": "assistant",
+                "content": [{"type": "text", "text": text_content}]
+            })
+
+    def _build_messages(self, user_message: str) -> List[Dict]:
+        """构建消息列表"""
+        messages = list(self._messages)
+        messages.append({
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": user_message
+                }
+            ]
+        })
+        return messages
+
+    def clear_conversation(self) -> None:
+        """清除对话历史（保留系统消息）"""
+        self._messages = []
+
     def create_message(
         self,
         system: str,
         user_message: str,
-        max_tokens: int = 4000
+        max_tokens: int = 4000,
+        tools: List[Dict] = None
     ):
-        """发送消息并获取响应（完全按照官方文档）"""
+        """发送消息并获取响应"""
         client = self._get_client()
-        
-        message = client.messages.create(
-            model="MiniMax-M2.7",
-            max_tokens=max_tokens,
-            system=system,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": user_message
-                        }
-                    ]
-                }
-            ]
-        )
-        
+        messages = self._build_messages(user_message)
+
+        import logging
+        logging.info(f"[DEBUG] 发送消息数量: {len(messages)}")
+        for i, msg in enumerate(messages):
+            logging.info(f"[DEBUG] 消息 {i}: role={msg['role']}")
+            for block in msg.get("content", []):
+                logging.info(f"[DEBUG]   block type: {block.get('type')}")
+                if block.get("type") == "tool_use":
+                    logging.info(f"[DEBUG]     id: {block.get('id')}, name: {block.get('name')}")
+                elif block.get("type") == "tool_result":
+                    logging.info(f"[DEBUG]     tool_use_id: {block.get('tool_use_id')}")
+
+        if tools:
+            message = client.messages.create(
+                model="MiniMax-M2.7",
+                max_tokens=max_tokens,
+                system=system,
+                messages=messages,
+                tools=tools
+            )
+        else:
+            message = client.messages.create(
+                model="MiniMax-M2.7",
+                max_tokens=max_tokens,
+                system=system,
+                messages=messages
+            )
+
         return message
 
     def set_tools(self, tools: list) -> None:
@@ -80,11 +156,12 @@ class LLMClient:
         self._system_message = content
 
     def call_with_tools(self, user_message: str, system_message: str = None, max_tokens: int = 4000):
-        """调用 API（支持工具调用）- 当前简化为普通调用"""
+        """调用 API（支持工具调用）"""
         return self.create_message(
             system=system_message or self._system_message,
             user_message=user_message,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            tools=self._tools if self._tools else None
         )
 
     def call(
@@ -131,7 +208,11 @@ class LLMClient:
                     "input": block.input
                 })
                 result["has_tool_calls"] = True
-        
+            elif block.type == "tool_result":
+                self.add_tool_result(block.tool_use_id, block.content)
+            elif block.type == "thinking":
+                pass
+
         return result
 
 

@@ -9,7 +9,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, List, Dict
 from dataclasses import dataclass, field
 
 from autowriter.config.settings import DEFAULT_CONFIG, SystemConfig
@@ -18,6 +18,7 @@ from autowriter.src.llm.message import ToolDefinition
 from autowriter.src.core.react import ReActLoop, ToolRegistry, AgentState
 from autowriter.src.core.state import SessionState
 from autowriter.src.memory import MemoryRetriever, MemoryIntegrator
+from autowriter.src.tools import NovelTools
 
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ class WritingAgent:
 
         self.memory_retriever = MemoryRetriever(str(self.project_path))
         self.memory_integrator = MemoryIntegrator(str(self.project_path))
+        self.novel_tools = NovelTools(str(self.project_path))
 
         self.react_loop = ReActLoop(
             llm_client=self.llm_client,
@@ -76,13 +78,18 @@ class WritingAgent:
         self.tool_registry.register("query_memory", self._tool_query_memory)
         self.tool_registry.register("write_draft", self._tool_write_draft)
         self.tool_registry.register("revise_draft", self._tool_revise_draft)
+        self.tool_registry.register("expand_outline", self._tool_expand_outline)
+        self.tool_registry.register("update_timeline", self._tool_update_timeline)
+        self.tool_registry.register("check_foreshadowing", self._tool_check_foreshadowing)
+        self.tool_registry.register("add_foreshadowing", self._tool_add_foreshadowing)
+        self.tool_registry.register("resolve_foreshadowing", self._tool_resolve_foreshadowing)
+        self.tool_registry.register("get_character_status", self._tool_get_character_status)
+        self.tool_registry.register("update_character_status", self._tool_update_character_status)
 
         tool_defs = [
             ToolDefinition(
                 name="query_memory",
-                description="查询角色、世界观或任何故事背景信息。"
-                            "当需要了解角色外貌、性格、过往，或需要了解地点设定、"
-                            "世界观规则时使用。",
+                description="查询角色、世界观或任何故事背景信息。当需要了解角色外貌、性格、过往，或需要了解地点设定、世界观规则时使用。",
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -96,8 +103,7 @@ class WritingAgent:
             ),
             ToolDefinition(
                 name="write_draft",
-                description="根据给定的大纲和上下文，创作新的章节文本。"
-                            "当你有足够的背景信息，可以开始写作时使用。",
+                description="根据给定的大纲和上下文，创作新的章节文本。当你有足够的背景信息，可以开始写作时使用。",
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -115,8 +121,7 @@ class WritingAgent:
             ),
             ToolDefinition(
                 name="revise_draft",
-                description="根据修改指令，修改已有的章节文本。"
-                            "当需要调整已有内容、修正错误或改进文风时使用。",
+                description="根据修改指令，修改已有的章节文本。当需要调整已有内容、修正错误或改进文风时使用。",
                 input_schema={
                     "type": "object",
                     "properties": {
@@ -130,6 +135,134 @@ class WritingAgent:
                         }
                     },
                     "required": ["chapter", "instruction"]
+                }
+            ),
+            ToolDefinition(
+                name="expand_outline",
+                description="当用户只给出粗略想法（如一句话梗概），需要将其扩展为包含场景、冲突、角色的详细大纲时使用。可用于章节规划或片段构思。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "idea": {
+                            "type": "string",
+                            "description": "用户提供的粗略想法或一句话梗概"
+                        },
+                        "style": {
+                            "type": "string",
+                            "enum": ["detailed", "simple"],
+                            "description": "大纲详细程度，默认为 detailed"
+                        }
+                    },
+                    "required": ["idea"]
+                }
+            ),
+            ToolDefinition(
+                name="update_timeline",
+                description="记录故事中发生的关键事件，或推进当前时间。每次完成一段涉及时间推移的写作后应调用此工具，以保持时间线连贯。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "action": {
+                            "type": "string",
+                            "enum": ["add_event", "advance_date"],
+                            "description": "操作类型：添加事件或推进日期"
+                        },
+                        "event": {
+                            "type": "string",
+                            "description": "当 action=add_event 时，描述事件内容"
+                        },
+                        "new_date": {
+                            "type": "string",
+                            "description": "当 action=advance_date 时，新的当前日期（如'三月十六'）"
+                        }
+                    },
+                    "required": ["action"]
+                }
+            ),
+            ToolDefinition(
+                name="check_foreshadowing",
+                description="查询当前故事中所有未回收的伏笔。在开始新章节写作前或构思情节时使用，确保不遗忘已埋下的线索。",
+                input_schema={
+                    "type": "object",
+                    "properties": {}
+                }
+            ),
+            ToolDefinition(
+                name="add_foreshadowing",
+                description="在故事中埋下新伏笔时调用。伏笔是未来会揭晓的悬念或线索。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "description": {
+                            "type": "string",
+                            "description": "伏笔的具体描述"
+                        },
+                        "hint": {
+                            "type": "string",
+                            "description": "关于何时或如何回收的提示（可选）"
+                        }
+                    },
+                    "required": ["description"]
+                }
+            ),
+            ToolDefinition(
+                name="resolve_foreshadowing",
+                description="当某个伏笔被揭晓或回收时调用，标记为已解决。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "foreshadowing_id": {
+                            "type": "string",
+                            "description": "伏笔的唯一标识（由系统在添加时返回）"
+                        }
+                    },
+                    "required": ["foreshadowing_id"]
+                }
+            ),
+            ToolDefinition(
+                name="get_character_status",
+                description="查询某个角色当前的位置、身体状况、携带物品等动态状态。在描写角色出场前使用。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "character_name": {
+                            "type": "string",
+                            "description": "角色名称"
+                        }
+                    },
+                    "required": ["character_name"]
+                }
+            ),
+            ToolDefinition(
+                name="update_character_status",
+                description="更新角色的动态状态，如移动到新地点、受伤、获得物品等。章节中角色状态变化后应调用。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "character_name": {
+                            "type": "string",
+                            "description": "角色名称"
+                        },
+                        "location": {
+                            "type": "string",
+                            "description": "新位置（可选）"
+                        },
+                        "condition": {
+                            "type": "string",
+                            "description": "身体状况（可选）"
+                        },
+                        "inventory_add": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "新增物品（可选）"
+                        },
+                        "inventory_remove": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "移除物品（可选）"
+                        }
+                    },
+                    "required": ["character_name"]
                 }
             )
         ]
@@ -157,12 +290,43 @@ class WritingAgent:
   输入: {{"chapter": 章节号, "instruction": "修改指令"}}
   输出: 修改后的草稿
 
+- expand_outline: 将粗略想法扩展为详细大纲。
+  输入: {{"idea": "一句话梗概"}}
+  输出: 包含场景、冲突、角色安排的大纲
+
+- update_timeline: 更新故事时间线。
+  输入: {{"action": "add_event"或"advance_date", "event": "...", "new_date": "..."}}
+  输出: 操作结果
+
+- check_foreshadowing: 查询未回收的伏笔。
+  输入: {{}}
+  输出: 伏笔列表
+
+- add_foreshadowing: 记录新伏笔。
+  输入: {{"description": "伏笔描述", "hint": "回收提示"}}
+  输出: 伏笔ID
+
+- resolve_foreshadowing: 标记伏笔已回收。
+  输入: {{"foreshadowing_id": "ID"}}
+  输出: 操作结果
+
+- get_character_status: 查询角色状态。
+  输入: {{"character_name": "角色名"}}
+  输出: 角色位置、状态、物品
+
+- update_character_status: 更新角色状态。
+  输入: {{"character_name": "...", "location": "...", "condition": "...", "inventory_add": [...], "inventory_remove": [...]}}
+  输出: 操作结果
+
 【行为规则】
 1. 始终遵循 ReAct 框架进行推理和行动
 2. 每次行动前先思考（Thought）
 3. 确保生成内容符合小说风格设定
 4. 保持角色性格一致性
 5. 及时埋设和回收伏笔
+6. 写作前先使用 check_foreshadowing 查看未回收伏笔
+7. 写作后使用 update_timeline 更新时间线
+8. 角色状态变化后使用 update_character_status 更新
 
 【写作风格】
 {style_rules or "使用流畅的叙事风格，注重人物刻画和情节推进。"}
@@ -221,6 +385,7 @@ class WritingAgent:
                 return "[LLM 返回空内容]"
 
             self._update_memory_after_write(content)
+            self._save_chapter_to_file(chapter, content)
             return content
 
         except Exception as e:
@@ -236,9 +401,73 @@ class WritingAgent:
         except Exception as e:
             logger.warning(f"记忆更新失败: {e}")
 
+    def _save_chapter_to_file(self, chapter: int, content: str) -> None:
+        """保存章节到文件"""
+        try:
+            novel_file = self.project_path / "novel.md"
+            header = f"### 第{chapter}章\n\n"
+
+            if novel_file.exists():
+                existing = novel_file.read_text(encoding="utf-8")
+                if f"### 第{chapter}章" in existing:
+                    import re
+                    pattern = rf"(### 第{chapter}章\n\n)(.*?)(\n\n### |\n\n---|\Z)"
+                    existing = re.sub(pattern, rf"\1{content}\3", existing, flags=re.DOTALL)
+                else:
+                    existing += f"\n\n{header}{content}\n\n---"
+            else:
+                existing = f"# 我的小说\n\n{header}{content}\n\n---"
+
+            novel_file.write_text(existing, encoding="utf-8")
+            logger.info(f"第{chapter}章已保存到 {novel_file}")
+        except Exception as e:
+            logger.error(f"保存章节失败: {e}")
+
     def _tool_revise_draft(self, chapter: int, instruction: str) -> str:
         """工具：修订章节"""
         return f"[第{chapter}章修订]\n\n根据指令：{instruction}\n\n[修订后的内容]"
+
+    def _tool_expand_outline(self, idea: str, style: str = "detailed") -> str:
+        """工具：扩展大纲"""
+        return self.novel_tools.expand_outline(idea, style)
+
+    def _tool_update_timeline(
+        self,
+        action: str,
+        event: Optional[str] = None,
+        new_date: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """工具：更新时间线"""
+        return self.novel_tools.update_timeline(action, event, new_date)
+
+    def _tool_check_foreshadowing(self) -> List[Dict[str, str]]:
+        """工具：检查伏笔"""
+        return self.novel_tools.check_foreshadowing()
+
+    def _tool_add_foreshadowing(self, description: str, hint: str = "") -> Dict[str, Any]:
+        """工具：添加伏笔"""
+        return self.novel_tools.add_foreshadowing(description, hint)
+
+    def _tool_resolve_foreshadowing(self, foreshadowing_id: str) -> Dict[str, Any]:
+        """工具：回收伏笔"""
+        return self.novel_tools.resolve_foreshadowing(foreshadowing_id)
+
+    def _tool_get_character_status(self, character_name: str) -> Dict[str, Any]:
+        """工具：获取角色状态"""
+        return self.novel_tools.get_character_status(character_name)
+
+    def _tool_update_character_status(
+        self,
+        character_name: str,
+        location: Optional[str] = None,
+        condition: Optional[str] = None,
+        inventory_add: Optional[List[str]] = None,
+        inventory_remove: Optional[List[str]] = None
+    ) -> Dict[str, Any]:
+        """工具：更新角色状态"""
+        return self.novel_tools.update_character_status(
+            character_name, location, condition, inventory_add, inventory_remove
+        )
 
     def execute_task(self, task: WritingTask) -> WritingResult:
         """执行写作任务
