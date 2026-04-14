@@ -52,7 +52,38 @@
         }
       ]
     },
-    "character_status": {},
+    "character_status": {
+      "陈雷": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "陈德发": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "周桂芳": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "老李": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "李秀兰": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      },
+      "张大娘": {
+        "location": "未知",
+        "condition": "正常",
+        "inventory": []
+      }
+    },
     "pending_foreshadowing": [
       {
         "id": "3b2f2e82",
@@ -83,6 +114,36 @@
         "description": "记忆模糊伏笔：陈雷回忆车祸细节时，脑海中闪过模糊、片段式的画面——暗示重生能力可能有代价或限制，他无法确定车祸具体发生在哪个路段",
         "hint": "重生者的记忆是否有缺失？这会影响他拯救父母的计划吗？",
         "status": "unresolved"
+      },
+      {
+        "id": "日历标注的6月10日是父亲陈德发出车后再也没回来的日子，这是\"人生的地裂线\"",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "陈雷记得那天会下大雨，省道两旁有树，车子打滑翻滚后是黑暗——暗示父亲将遭遇车祸",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "父亲欠老李八千块，欠条日期是6月15日（出车后5天），可能暗示父亲是为了还债才冒险出车",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "陈雷手腕的疤痕消失了，身体回到年轻状态，暗示某种神秘的重生机制",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "陈雷决心改变命运——\"这一次，他不会让父亲出事\"",
+        "status": "unresolved",
+        "hint": ""
+      },
+      {
+        "id": "台历上6月10日被红笔画圈，且陈德发手指停留时微微颤抖——暗示父亲对这一天有某种预感或特殊标记，事故可能并非意外",
+        "status": "unresolved",
+        "hint": ""
       }
     ]
   }

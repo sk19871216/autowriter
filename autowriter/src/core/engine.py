@@ -8,14 +8,17 @@
 """
 
 import json
+import logging
 from pathlib import Path
 from typing import Any, Optional
 from dataclasses import dataclass, field
 
 from langgraph.graph import StateGraph, END
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 from autowriter.config.settings import DEFAULT_CONFIG, SystemConfig
+from autowriter.src.core.agent import WritingAgent, WritingTask, WritingResult
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,7 +53,15 @@ class WritingEngine:
         self.config = config or DEFAULT_CONFIG
         self.project_path = Path(project_path)
         self.session_state = SessionState()
+        self._agent: Optional[WritingAgent] = None
         self._ensure_project_structure()
+    
+    @property
+    def agent(self) -> WritingAgent:
+        """懒加载 WritingAgent 实例"""
+        if self._agent is None:
+            self._agent = WritingAgent(project_path=str(self.project_path))
+        return self._agent
         
     def _ensure_project_structure(self) -> None:
         """确保项目目录结构存在"""
@@ -122,17 +133,36 @@ class WritingEngine:
             style_rules=self._load_style_rules(),
         )
         
-        draft = self._generate_draft(context)
+        result = self._generate_draft(context)
         
-        self._save_draft(chapter, draft)
-        
-        return {
-            "status": "success",
-            "action": "write",
-            "chapter": chapter,
-            "draft": draft,
-            "continuation_marker": self._generate_continuation_marker(draft)
-        }
+        if isinstance(result, WritingResult):
+            if result.success:
+                self._save_draft(chapter, result.content)
+                return {
+                    "status": "success",
+                    "action": "write",
+                    "chapter": chapter,
+                    "draft": result.content,
+                    "history": result.history,
+                    "continuation_marker": self._generate_continuation_marker(result.content)
+                }
+            else:
+                return {
+                    "status": "error",
+                    "action": "write",
+                    "chapter": chapter,
+                    "error": result.error
+                }
+        else:
+            draft = result
+            self._save_draft(chapter, draft)
+            return {
+                "status": "success",
+                "action": "write",
+                "chapter": chapter,
+                "draft": draft,
+                "continuation_marker": self._generate_continuation_marker(draft)
+            }
     
     def _handle_continue(self) -> dict[str, Any]:
         """处理续写指令"""
@@ -200,10 +230,24 @@ class WritingEngine:
         """加载写作风格规则"""
         return None
     
-    def _generate_draft(self, context: WritingContext) -> str:
-        """生成章节草稿（最简实现）"""
-        prompt = self._build_simple_prompt(context)
-        return f"[第{self.session_state.current_chapter}章草稿]\n\n系统提示：请配置 LLM API 以生成实际内容。\n\n大纲: {context.chapter_outline or '未提供大纲'}"
+    def _generate_draft(self, context: WritingContext) -> str | WritingResult:
+        """生成章节草稿（调用 WritingAgent）"""
+        chapter = self.session_state.current_chapter or 1
+        outline = context.chapter_outline or "根据用户提供的要求创作小说章节。"
+        
+        try:
+            logger.info(f"调用 WritingAgent 生成第{chapter}章草稿")
+            task = WritingTask(
+                task_type="write",
+                content=outline,
+                chapter=chapter
+            )
+            result = self.agent.execute_task(task)
+            logger.info(f"WritingAgent 执行完成: success={result.success}")
+            return result
+        except Exception as e:
+            logger.error(f"调用 WritingAgent 失败: {e}")
+            return f"[调用 WritingAgent 失败: {str(e)}]"
     
     def _build_simple_prompt(self, context: WritingContext) -> str:
         """构建简单写作 Prompt"""

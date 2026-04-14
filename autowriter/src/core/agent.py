@@ -85,6 +85,7 @@ class WritingAgent:
         self.tool_registry.register("resolve_foreshadowing", self._tool_resolve_foreshadowing)
         self.tool_registry.register("get_character_status", self._tool_get_character_status)
         self.tool_registry.register("update_character_status", self._tool_update_character_status)
+        self.tool_registry.register("finish_task", self._tool_finish_task)
 
         tool_defs = [
             ToolDefinition(
@@ -264,6 +265,23 @@ class WritingAgent:
                     },
                     "required": ["character_name"]
                 }
+            ),
+            ToolDefinition(
+                name="finish_task",
+                description="当章节写作任务已完成，记忆已更新，必要时时间线也已更新后，调用此工具报告完成。",
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "summary": {
+                            "type": "string",
+                            "description": "任务完成摘要（可选）"
+                        },
+                        "next_steps": {
+                            "type": "string",
+                            "description": "后续步骤建议（可选）"
+                        }
+                    }
+                }
             )
         ]
 
@@ -318,6 +336,10 @@ class WritingAgent:
   输入: {{"character_name": "...", "location": "...", "condition": "...", "inventory_add": [...], "inventory_remove": [...]}}
   输出: 操作结果
 
+- finish_task: 报告任务完成。
+  输入: {{"summary": "完成摘要", "next_steps": "后续建议"}}
+  输出: 完成状态
+
 【行为规则】
 1. 始终遵循 ReAct 框架进行推理和行动
 2. 每次行动前先思考（Thought）
@@ -361,15 +383,31 @@ class WritingAgent:
         return "\n".join(text_parts) if text_parts else ""
 
     def _tool_write_draft(self, chapter: int, outline: str) -> str:
-        """工具：写章节草稿（调用 LLM 生成）"""
+        """工具：写章节草稿（调用 LLM 生成）
+        
+        注意：此方法只返回内容，不保存到文件。
+        保存到 drafts/ 由 WritingEngine._save_draft() 负责。
+        保存到 novel.md 由用户确认后执行。
+        
+        写作完成后，请思考并返回：
+        1. 章节内容
+        2. 本章发生的关键事件（用于更新 timeline）
+        3. 本章是否埋下新伏笔
+        """
         style_rules = self._load_style_rules() or "古龙式冷峻风格，短句为主，环境渲染意境"
 
         full_index = self.memory_retriever.get_full_index()
+        pending_foreshadowing = self.novel_tools.check_foreshadowing()
+        
+        foreshadow_str = "\n".join([f"- {f.get('description', f.get('id', '未知'))}" for f in pending_foreshadowing]) if pending_foreshadowing else "无"
 
         prompt = f"""你是专业的小说作家。
 
 【记忆索引】
 {full_index}
+
+【当前未回收伏笔】
+{foreshadow_str}
 
 请根据以下素材创作小说章节：
 
@@ -381,6 +419,7 @@ class WritingAgent:
 3. 注重人物刻画和心理描写
 4. 保持角色性格一致
 5. 直接输出小说内容，不需要任何说明
+6. 如果情节涉及时间推移，在写作时注明日期变化
 
 小说内容："""
 
@@ -388,6 +427,7 @@ class WritingAgent:
             if not self.llm_client.config.api_key:
                 draft = f"[API Key 未配置] 正在使用模拟输出。\n\n雨滴落在破庙的残瓦上，发出清脆的声响。\n\n林清瑶站在庙门前，剑鞘轻叩腰间，发出细微的金属碰撞声。她的衣衫已经湿透，雨水顺着发丝滑落，但她的眼神依然如剑锋般锐利。\n\n'十年了。'她在心中默念，'我终于找到了这里。'\n\n..."
                 self._update_memory_after_write(draft)
+                logger.info(f"第{chapter}章草稿生成完成，长度: {len(draft)} 字符")
                 return draft
 
             response = self.llm_client.call(prompt, temperature=0.8, max_tokens=2000)
@@ -397,7 +437,8 @@ class WritingAgent:
                 return "[LLM 返回空内容]"
 
             self._update_memory_after_write(content)
-            self._save_chapter_to_file(chapter, content)
+            logger.info(f"第{chapter}章草稿生成完成，长度: {len(content)} 字符")
+            
             return content
 
         except Exception as e:
@@ -480,6 +521,25 @@ class WritingAgent:
         return self.novel_tools.update_character_status(
             character_name, location, condition, inventory_add, inventory_remove
         )
+    
+    def _tool_finish_task(self, summary: str = "", next_steps: str = "") -> Dict[str, Any]:
+        """工具：完成任务报告
+        
+        当所有必要的写作、记忆更新、时间线更新都完成后，调用此工具报告任务完成。
+        
+        Args:
+            summary: 任务完成摘要
+            next_steps: 后续步骤建议
+        
+        Returns:
+            完成状态报告
+        """
+        return {
+            "status": "completed",
+            "summary": summary or "章节写作任务已完成",
+            "next_steps": next_steps or "用户可查看 drafts/ 目录中的草稿文件",
+            "timestamp": "2024-01-01T00:00:00"
+        }
 
     def execute_task(self, task: WritingTask) -> WritingResult:
         """执行写作任务
