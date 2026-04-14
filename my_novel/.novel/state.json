@@ -1,116 +1,88 @@
 {
   "project_info": {
-    "name": "我的小说",
-    "created_at": "2026-04-13T00:00:00",
-    "updated_at": "2026-04-13T00:00:00"
+    "name": "重生幸福",
+    "created_at": "2026-04-14T00:00:00",
+    "updated_at": "2026-04-14T00:00:00"
   },
   "writing_progress": {
-    "current_chapter": 1,
-    "total_chapters": 30,
+    "current_chapter": 0,
+    "total_chapters": 0,
     "completed_chapters": 0,
-    "drafting_chapters": [
-      1
-    ]
+    "drafting_chapters": []
   },
   "writing_config": {
-    "style": "古龙式冷峻",
-    "tone": "悬疑",
-    "iron_rules": [
-      "林清瑶的剑鞘始终未出",
-      "青云子的每句话都要暗藏机锋"
-    ]
+    "style": "",
+    "tone": "",
+    "iron_rules": []
   },
   "active_entities": {
-    "characters": [
-      "林清瑶",
-      "李慕白",
-      "青云子"
-    ],
-    "locations": [
-      "青云宗",
-      "藏剑阁"
-    ]
+    "characters": [],
+    "locations": []
   },
   "foreshadowing": {
-    "unresolved": [
-      {
-        "id": "灭门案",
-        "introduced_in_chapter": 1,
-        "description": "林清瑶家族被灭，凶手不明",
-        "status": "unresolved"
-      },
-      {
-        "id": "血仇真相",
-        "introduced_in_chapter": 1,
-        "description": "与林清瑶身世相关",
-        "status": "unresolved"
-      }
-    ],
+    "unresolved": [],
     "resolved": []
   },
-  "timeline": [
-    {
-      "id": "十年前",
-      "chapter": null,
-      "description": "灭门惨案发生",
-      "importance": "high"
-    },
-    {
-      "id": "当前",
-      "chapter": 1,
-      "description": "林清瑶拜入青云宗",
-      "importance": "high"
-    }
-  ],
+  "timeline": [],
   "revision_queue": [],
   "validation_history": [],
   "story_state": {
     "timeline": {
       "current_date": "初始",
-      "events": []
+      "events": [
+        {
+          "date": "初始",
+          "event": "陈雷从2024年重生回到2008年6月3日，意识到自己回到了父母车祸前一周"
+        },
+        {
+          "date": "初始",
+          "event": "陈雷回到老家，发现父亲陈德发在日历上圈出\"6月10日\"标记\"省城进货\"，距离车祸只剩七天"
+        },
+        {
+          "date": "初始",
+          "event": "陈雷在父亲抽屉里发现欠条，得知父亲欠赌债八千元（6月15日前还清），是此次冒险出车的真正原因"
+        },
+        {
+          "date": "初始",
+          "event": "陈雷在村口槐树下跪求父亲改变行程，被父亲当众拒绝并斥骂\"老子活了四十年，用得着你个毛头小子指手画脚\""
+        },
+        {
+          "date": "初始",
+          "event": "陈雷尝试联系王叔帮忙阻止父亲出车，遭到敷衍回应，拯救计划陷入困境"
+        }
+      ]
     },
-    "character_status": {
-      "青云子（提及）": {
-        "location": "未知",
-        "condition": "正常",
-        "inventory": []
-      },
-      "林清瑶母亲（提及）": {
-        "location": "未知",
-        "condition": "正常",
-        "inventory": []
-      },
-      "李慕白母亲（提及）": {
-        "location": "未知",
-        "condition": "正常",
-        "inventory": []
-      }
-    },
+    "character_status": {},
     "pending_foreshadowing": [
       {
-        "id": "林清瑶母亲与李慕白母亲死于同一人之手（均身中三十七处剑伤），凶手疑似青云子",
-        "status": "unresolved",
-        "hint": ""
+        "id": "3b2f2e82",
+        "description": "车祸真相伏笔：父亲陈德发此次出车，表面是\"进货挣学费\"，实际是因为欠了老李八千元赌债（由张大爷、村中闲话暗示）。欠条日期为六月十五日前还清，而车祸恰好发生在六月十日——父亲可能是被债务逼迫铤而走险。",
+        "hint": "车祸发生的原因可能不只是\"雨天路滑\"，背后有债务压力和人情逼迫的深层原因",
+        "status": "unresolved"
       },
       {
-        "id": "李慕白母亲与青云宗之间存在隐秘往事",
-        "status": "unresolved",
-        "hint": ""
+        "id": "760f4c5a",
+        "description": "手腕伤疤伏笔：陈雷醒来时发现自己手腕上有一道伤疤（2015年打架留下的），但现在它不存在了——暗示重生可能带来身体状态的\"还原\"，或重生前发生了某些事情",
+        "hint": "重生能力从何而来？手腕上的伤疤去哪了？",
+        "status": "unresolved"
       },
       {
-        "id": "林清瑶父亲花费十八年追查凶手，青云子是最后一人",
-        "status": "unresolved",
-        "hint": ""
+        "id": "3b978bd1",
+        "description": "汇款单秘密伏笔：汇款单上有一行小字\"多给雷子买点营养品\"，是父亲的字迹——暗示父亲表面严厉，内心细腻，但陈雷直到父母去世后才在遗物中发现这张汇款单",
+        "hint": "这张汇款单后来会成为陈雷心中永远无法弥补的遗憾",
+        "status": "unresolved"
       },
       {
-        "id": "明日卯时青云山后山，林清瑶将刺杀青云子，李慕白决定相助",
-        "status": "unresolved",
-        "hint": ""
+        "id": "dc6c5242",
+        "description": "父亲手指颤抖伏笔：陈德发在日历上圈出\"6月10日\"时，手指微微颤抖——暗示他可能已隐约感到不安，但为了家庭责任仍决定冒险",
+        "hint": "父亲是否也有某种直觉？他的不安来自何处？",
+        "status": "unresolved"
       },
       {
-        "id": "李慕白对林清瑶产生兴趣（「有意思」暗示后续发展）",
-        "status": "unresolved",
-        "hint": ""
+        "id": "d8aa222e",
+        "description": "记忆模糊伏笔：陈雷回忆车祸细节时，脑海中闪过模糊、片段式的画面——暗示重生能力可能有代价或限制，他无法确定车祸具体发生在哪个路段",
+        "hint": "重生者的记忆是否有缺失？这会影响他拯救父母的计划吗？",
+        "status": "unresolved"
       }
     ]
   }

@@ -348,6 +348,18 @@ class WritingAgent:
         """工具：查询记忆"""
         return self.memory_retriever.retrieve(query)
 
+    def _extract_text_from_response(self, response) -> str:
+        """从 API 响应中提取纯文本（过滤 thinking block）"""
+        if isinstance(response.content, str):
+            return response.content
+        
+        text_parts = []
+        for block in response.content:
+            if block.type == "text":
+                text_parts.append(block.text)
+        
+        return "\n".join(text_parts) if text_parts else ""
+
     def _tool_write_draft(self, chapter: int, outline: str) -> str:
         """工具：写章节草稿（调用 LLM 生成）"""
         style_rules = self._load_style_rules() or "古龙式冷峻风格，短句为主，环境渲染意境"
@@ -379,7 +391,7 @@ class WritingAgent:
                 return draft
 
             response = self.llm_client.call(prompt, temperature=0.8, max_tokens=2000)
-            content = response.content
+            content = self._extract_text_from_response(response)
 
             if not content:
                 return "[LLM 返回空内容]"

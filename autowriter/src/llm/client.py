@@ -31,6 +31,7 @@ class LLMClient:
         self._system_message = ""
         self.config = LLMConfig()
         self._tool_call_counter = 0
+        self._pending_tool_results: List[Dict] = []
 
     def _get_client(self) -> anthropic.Anthropic:
         """获取 Anthropic 客户端"""
@@ -43,17 +44,21 @@ class LLMClient:
         return self._client
 
     def add_tool_result(self, tool_use_id: str, content: str) -> None:
-        """添加工具结果消息"""
-        self._messages.append({
-            "role": "user",
-            "content": [
-                {
-                    "type": "tool_result",
-                    "tool_use_id": tool_use_id,
-                    "content": content
-                }
-            ]
+        """添加工具结果到缓冲区（不立即发送）"""
+        self._pending_tool_results.append({
+            "type": "tool_result",
+            "tool_use_id": tool_use_id,
+            "content": content
         })
+
+    def flush_tool_results(self) -> None:
+        """将缓冲的工具结果作为单个 user 消息发送"""
+        if self._pending_tool_results:
+            self._messages.append({
+                "role": "user",
+                "content": self._pending_tool_results
+            })
+            self._pending_tool_results = []
 
     def add_llm_response(self, message) -> None:
         """保存 LLM 的回复到消息历史"""
@@ -87,6 +92,7 @@ class LLMClient:
 
     def _build_messages(self, user_message: str) -> List[Dict]:
         """构建消息列表"""
+        self.flush_tool_results()
         messages = list(self._messages)
         messages.append({
             "role": "user",
@@ -102,6 +108,7 @@ class LLMClient:
     def clear_conversation(self) -> None:
         """清除对话历史（保留系统消息）"""
         self._messages = []
+        self._pending_tool_results = []
 
     def create_message(
         self,
@@ -150,6 +157,7 @@ class LLMClient:
     def clear_history(self) -> None:
         """清空消息历史"""
         self._messages = []
+        self._pending_tool_results = []
 
     def add_system_message(self, content: str) -> None:
         """设置系统消息"""
@@ -171,7 +179,7 @@ class LLMClient:
         temperature: float = 0.7,
         max_tokens: int = 4000
     ) -> Any:
-        """发送消息并获取响应的便捷方法
+        """发送消息并获取响应的便捷方法（不使用工具，纯文本生成）
 
         Args:
             prompt: 用户消息
@@ -182,10 +190,25 @@ class LLMClient:
         Returns:
             消息对象
         """
-        response = self.create_message(
+        self.flush_tool_results()
+        client = self._get_client()
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": prompt
+                    }
+                ]
+            }
+        ]
+        
+        response = client.messages.create(
+            model="MiniMax-M2.7",
+            max_tokens=max_tokens,
             system=system or self._system_message,
-            user_message=prompt,
-            max_tokens=max_tokens
+            messages=messages
         )
         return response
 

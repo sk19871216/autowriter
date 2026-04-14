@@ -158,6 +158,8 @@ class ReActLoop:
             self.llm_client.add_tool_result(tool_use_id, result_content)
             all_results.append(result_content)
 
+        self.llm_client.flush_tool_results()
+
         context.history.append({
             "state": "ACTION",
             "tool": pending_calls[0]["name"],
